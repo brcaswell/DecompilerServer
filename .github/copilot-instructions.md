@@ -124,7 +124,7 @@ dotnet format DecompilerServer.sln
 
 1. **Configured MCP Server Testing** (Production Usage):
    - Uses containerized MCP server with real Unity Assembly-CSharp.dll files
-   - Requires VS Code MCP configuration (.vscode/mcp.json) to be active
+   - Requires MCP client configuration to connect to the containerized server
    - Loads actual game assemblies from mounted volumes
    - Example: `mcp_decompilerser_load_assembly` with `gameDir: "/app/assemblies"`
 

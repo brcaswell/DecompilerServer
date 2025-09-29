@@ -60,7 +60,7 @@ DecompilerServer/
 └── *.md                           # Documentation files
 ```
 
-> **💡 Tip**: See [🤖 AI Tool Integration](#-ai-tool-integration) to configure with AI assistants.
+
 
 ## 🐳 Docker/Podman Support
 
@@ -83,56 +83,7 @@ DecompilerServer provides full containerization support for easy deployment and 
    docker run --rm decompiler-server:latest echo "Container is ready"
    ```
 
-### VS Code MCP Integration
 
-Configure DecompilerServer as an MCP server in VS Code using the containerized version:
-
-**Create `.vscode/mcp.json`**:
-```json
-{
-  "inputs": [
-    {
-      "id": "game-assemblies-path",
-      "type": "promptString",
-      "description": "Enter the path to your game's Managed assemblies folder (e.g., D:/SteamLibrary/steamapps/common/YourGame/YourGame_Data/Managed)"
-    },
-    {
-      "id": "assembly-filename",
-      "type": "promptString", 
-      "description": "Enter the assembly filename to analyze",
-      "default": "Assembly-CSharp.dll"
-    },
-    {
-      "id": "container-image",
-      "type": "promptString",
-      "description": "Enter the DecompilerServer container image name",
-      "default": "decompiler-server:latest"
-    }
-  ],
-  "servers": {
-    "DecompilerServer": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-v",
-        "${input:game-assemblies-path}:/app/assemblies:ro",
-        "-e",
-        "ASSEMBLY_PATH=/app/assemblies/${input:assembly-filename}",
-        "${input:container-image}"
-      ],
-      "env": {
-        "GAME_ASSEMBLIES_PATH": "${input:game-assemblies-path}",
-        "ASSEMBLY_FILENAME": "${input:assembly-filename}",
-        "CONTAINER_IMAGE": "${input:container-image}"
-      }
-    }
-  }
-}
-```
-
-**For Podman users**, simply change `"command": "docker"` to `"command": "podman"`.
 
 ### Container Usage Examples
 
@@ -169,23 +120,7 @@ docker run -i --rm \
 - **🔄 Stateless**: Each container run is isolated and clean
 - **⚖️ Lightweight**: Minimal container footprint with only required dependencies
 
-### Integration with VS Code Copilot Chat
 
-Once configured with `.vscode/mcp.json`, you can use DecompilerServer directly in VS Code Copilot Chat:
-
-```
-@DecompilerServer search for MonoBehaviour classes, show me 10 results
-@DecompilerServer what namespaces are available in the loaded assembly?
-@DecompilerServer decompile the PlayerController class
-@DecompilerServer find all methods that use Input.GetKey
-```
-
-VS Code will automatically:
-1. Prompt you for the assembly path (once per session)
-2. Start the containerized DecompilerServer
-3. Mount your game/assembly files as read-only volumes
-4. Execute your queries and return results
-5. Clean up the container after each interaction
 
 ## 🤖 AI Tool Integration
 
@@ -218,16 +153,7 @@ servers:
 }
 ```
 
-**VS Code MCP Extension** (`.vscode/settings.json`):
-```json
-{
-  "mcp.servers": [{
-    "name": "decompiler",
-    "command": "path_to_DecompilerServer.exe",
-    "args": []
-  }]
-}
-```
+
 
 ### Basic Usage
 
