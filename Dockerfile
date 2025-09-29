@@ -18,4 +18,9 @@ RUN dotnet publish "DecompilerServer.csproj" -c $configuration -o /app/publish /
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "DecompilerServer.dll"]
+
+# Environment variable to control verbose logging
+ENV DECOMPILER_VERBOSE=false
+
+# Use shell form to support environment variable expansion
+ENTRYPOINT ["/bin/sh", "-c", "if [ \"$DECOMPILER_VERBOSE\" = \"true\" ]; then dotnet DecompilerServer.dll --verbose; else dotnet DecompilerServer.dll; fi"]

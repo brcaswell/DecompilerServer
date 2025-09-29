@@ -39,6 +39,27 @@ A powerful MCP (Model Context Protocol) server for decompiling and analyzing .NE
    dotnet test
    ```
 
+## 📁 Project Structure
+
+```
+DecompilerServer/
+├── Services/                      # Core service implementations
+├── Tools/                         # MCP tool implementations (39 tools)
+├── Tests/                         # xUnit test suite
+├── TestLibrary/                   # Test assembly for validation
+├── Properties/                    # Application properties
+├── Program.cs                     # Application entry point
+├── ServiceLocator.cs              # Service locator for MCP tools
+├── StartupLogService.cs           # Startup logging service
+├── StderrLogger.cs                # Custom stderr logger for MCP
+├── Dockerfile                     # Container configuration
+├── .dockerignore                  # Docker build exclusions
+├── compose.yaml                   # Docker Compose configuration
+├── compose.debug.yaml             # Docker Compose debug configuration
+├── DecompilerServer.sln           # Solution file
+└── *.md                           # Documentation files
+```
+
 > **💡 Tip**: See [🤖 AI Tool Integration](#-ai-tool-integration) to configure with AI assistants.
 
 ## 🐳 Docker/Podman Support
@@ -131,6 +152,15 @@ docker run -i --rm \
   decompiler-server:latest
 ```
 
+**Enable Verbose Logging for Debugging**:
+```bash
+docker run -i --rm \
+  -v "/path/to/your/assemblies:/app/assemblies:ro" \
+  -e "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll" \
+  -e "DECOMPILER_VERBOSE=true" \
+  decompiler-server:latest
+```
+
 ### Container Features
 
 - **🔒 Secure**: Read-only volume mounting prevents container from modifying your files
@@ -204,6 +234,11 @@ servers:
 1. **Start the server**:
    ```bash
    dotnet run --project DecompilerServer
+   ```
+   
+   **Or with verbose logging for debugging**:
+   ```bash
+   dotnet run --project DecompilerServer -- --verbose
    ```
 
 2. **Load any .NET assembly** (via MCP client):

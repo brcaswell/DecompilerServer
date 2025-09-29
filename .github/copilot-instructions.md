@@ -36,6 +36,10 @@ DecompilerServer/
 ├── TestLibrary/                   # Test assembly for validation
 ├── ServiceLocator.cs              # Service locator for MCP tools
 ├── Program.cs                     # Application entry point
+├── Dockerfile                     # Container configuration
+├── .dockerignore                  # Docker build exclusions
+├── compose.yaml                   # Docker Compose configuration
+├── compose.debug.yaml             # Docker Compose debug configuration
 └── *.md                           # Documentation files
 ```
 
@@ -65,6 +69,14 @@ All guides are actively maintained and provide crucial implementation guidance f
 - Return structured errors: `{ error: { code, message, detail? } }`
 - Never throw exceptions across MCP boundaries
 - Handle assembly loading failures gracefully
+
+### MCP Tool Naming Convention
+The ModelContextProtocol framework automatically generates MCP tool names from C# static method names:
+- **Pattern**: `mcp_decompilerser_[methodname]` (lowercase with underscores)
+- **Example**: C# method `LoadAssembly` → MCP tool `mcp_decompilerser_load_assembly`
+- **Example**: C# method `SearchTypes` → MCP tool `mcp_decompilerser_search_types`
+
+This automatic naming is handled by the MCP framework and doesn't require manual configuration.
 
 ## Code Style & Conventions
 
@@ -103,6 +115,30 @@ dotnet format DecompilerServer.sln
 - Use `ServiceTestBase` for integration tests with loaded test.dll
 - Validate both functionality and output format
 - Test with various C# constructs (generics, inheritance, attributes, etc.)
+
+### MCP Server Testing Guidelines
+
+**Important Distinction: Configured MCP Server vs Internal Test Library**
+
+**When testing the MCP Server functionality, clarify the target:**
+
+1. **Configured MCP Server Testing** (Production Usage):
+   - Uses containerized MCP server with real Unity Assembly-CSharp.dll files
+   - Requires VS Code MCP configuration (.vscode/mcp.json) to be active
+   - Loads actual game assemblies from mounted volumes
+   - Example: `mcp_decompilerser_load_assembly` with `gameDir: "/app/assemblies"`
+
+2. **Internal Test Library Testing** (Development Testing):
+   - Uses TestLibrary project's test.dll for unit/integration tests
+   - Located at `TestLibrary/bin/Debug/net8.0/test.dll`
+   - Contains controlled test classes for validation
+   - Used by xUnit test suite, not for MCP server validation
+
+**AI Testing Guidance:**
+- **Default assumption**: User wants to test the configured MCP server with real assemblies
+- **Prompt for clarification** if conversation history doesn't clearly indicate which testing approach is intended
+- **Ask questions like**: "Do you want to test the containerized MCP server with a Unity assembly, or run the internal unit tests with TestLibrary?"
+- **Avoid automatically assuming TestLibrary usage** when user mentions MCP server testing
 
 ## Key Implementation Guidelines
 
@@ -236,6 +272,14 @@ public static string ToolName(parameters...)
 - New architectural patterns or testing approaches were discovered
 - Additional framework-specific guidance would help future development
 - The current instructions have become outdated or incomplete
+
+**Also update Project Structure sections when AI/Copilot work involves (unless explicitly instructed otherwise):**
+- Creating, moving, or renaming files/folders as part of the development task
+- Adding new components, services, or tools during implementation
+- Modifying Docker, configuration, or deployment files during the session
+- Only account for changes made during the current AI-assisted development work
+- Update both `README.md` and `.github/copilot-instructions.md` to maintain consistency
+- Do not automatically update for unrelated file changes that exist outside the scope of AI assistance
 
 **When working on improvements, refer to [TODO.md](../TODO.md) for:**
 - Prioritized list of enhancement opportunities  
