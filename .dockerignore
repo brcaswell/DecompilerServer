@@ -1,25 +1,64 @@
-**/.classpath
-**/.dockerignore
-**/.env
-**/.git
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Runtime files
+**/.vs/
+**/.vscode/
+**/.idea/
+
+# Documentation and metadata
+**/*.md
+**/LICENSE
+**/.git/
 **/.gitignore
-**/.project
-**/.settings
-**/.toolstarget
-**/.vs
-**/.vscode
-**/*.*proj.user
-**/*.dbmdl
-**/*.jfm
-**/bin
-**/charts
-**/docker-compose*
-**/compose*
+**/.gitattributes
+
+# Test files and debugging
+**/Tests/
+**/TestResults/
+**/*.Tests/
+**/*Tests.cs
+**/*.user
+**/*.suo
+
+# Docker files (avoid recursion)
 **/Dockerfile*
-**/node_modules
-**/npm-debug.log
-**/obj
-**/secrets.dev.yaml
-**/values.dev.yaml
-LICENSE
-README.md
+**/docker-compose*
+**/.dockerignore
+
+# OS generated files
+**/.DS_Store
+**/Thumbs.db
+**/*.tmp
+**/*.temp
+
+# IDE and editor files
+**/*.swp
+**/*.swo
+**/.*~
+
+# Package files
+**/*.nupkg
+**/*.snupkg
+
+# Environment and secrets
+**/.env
+**/.env.*
+**/secrets.json
+
+# Logs
+**/*.log
+**/logs/
+
+# Additional exclusions for smaller build context
+**/compose.yaml
+**/compose.debug.yaml
+**/.github/
+**/TODO.md
+**/TESTING.md
+**/HELPER_METHODS_GUIDE.md
+**/MCP_TROUBLESHOOTING.md
+**/AGENTS.md
+**/CommonImplementorGuide.txt
