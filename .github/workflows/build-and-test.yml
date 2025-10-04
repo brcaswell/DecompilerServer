@@ -49,6 +49,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore DecompilerServer.sln
+    
     - name: Build Docker image
       run: docker build -t decompiler-server:test .
     
@@ -83,8 +91,11 @@ jobs:
       with:
         dotnet-version: '8.0.x'
     
+    - name: Restore dependencies
+      run: dotnet restore DecompilerServer.sln
+    
     - name: Build solution (Release)
-      run: dotnet build DecompilerServer.sln --configuration Release
+      run: dotnet build DecompilerServer.sln --configuration Release --no-restore
     
     - name: Build solution (Debug for tests) 
       run: dotnet build DecompilerServer.sln --configuration Debug

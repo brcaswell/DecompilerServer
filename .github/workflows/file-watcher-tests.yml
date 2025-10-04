@@ -24,22 +24,28 @@ jobs:
       with:
         dotnet-version: '8.0.x'
     
+    - name: Restore dependencies
+      run: dotnet restore DecompilerServer.sln
+    
     - name: Build solution
-      run: dotnet build DecompilerServer.sln --configuration Release
+      run: dotnet build DecompilerServer.sln --configuration Release --no-restore
+    
+    - name: Restore dependencies
+      run: dotnet restore DecompilerServer.sln
     
     - name: Build all TestLibrary configurations
       run: |
         echo "Building all TestLibrary configurations..."
-        dotnet build TestLibrary/TestLibrary.csproj --configuration Debug
-        dotnet build TestLibrary/TestLibrary.csproj --configuration FileWatcherTest  
-        dotnet build TestLibrary/TestLibrary.csproj --configuration UnityDev
+        dotnet build TestLibrary/TestLibrary.csproj --configuration Debug --no-restore
+        dotnet build TestLibrary/TestLibrary.csproj --configuration FileWatcherTest --no-restore
+        dotnet build TestLibrary/TestLibrary.csproj --configuration UnityDev --no-restore
         
     - name: Verify build outputs
       run: |
         echo "Verifying FileWatcherTest output..."
-        ls -la test-assemblies/ || echo "No test-assemblies directory"
+        ls -la test-assemblies/net8.0/ || echo "No test-assemblies directory"
         echo "Verifying UnityDev output..."  
-        ls -la unity-assemblies/ || echo "No unity-assemblies directory"
+        ls -la unity-assemblies/net8.0/ || echo "No unity-assemblies directory"
         echo "Verifying Debug output..."
         ls -la TestLibrary/bin/Debug/net8.0/ || echo "No Debug output"
     
@@ -162,6 +168,9 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Restore dependencies
+      run: dotnet restore DecompilerServer.sln
     
     - name: Install Podman
       run: |

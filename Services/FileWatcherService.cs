@@ -170,11 +170,11 @@ public class FileWatcherService : BackgroundService
     private async Task TriggerContainerRestart()
     {
         _logger.LogInformation("Container restart required - signaling shutdown");
-        
+
         // In container mode, we exit with a specific code that the orchestrator can detect
         // The container orchestration layer will restart us with fresh state
         Environment.ExitCode = 42; // Custom exit code for "assembly changed"
-        
+
         // Allow graceful shutdown
         await Task.Delay(TimeSpan.FromSeconds(1));
         Environment.Exit(42);
