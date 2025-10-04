@@ -91,7 +91,7 @@ public class McpThreadingTests : ServiceTestBase
     {
         // Clear any existing global provider to start fresh
         ServiceLocator.ClearGlobalProvider();
-        
+
         // Ensure global provider is set first (simulates production startup)
         ServiceLocator.SetServiceProvider(_serviceProvider);
 
