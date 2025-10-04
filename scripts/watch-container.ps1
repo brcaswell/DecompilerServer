@@ -7,9 +7,9 @@ param(
     
     [string]$AssemblyFile = "Assembly-CSharp.dll",
     [string]$ContainerName = "decompiler-server",
-    [string]$ImageName = "decompiler-server:latest",
-    [switch]$Verbose,
-    [int]$WatchInterval = 2,
+    [string]$ImageName = "localhost/decompiler-server:latest",
+    [switch]$VerboseOutput,
+    [int]$WatchInterval = 1,
     [switch]$Help
 )
 
@@ -33,15 +33,15 @@ Parameters:
     -AssembliesPath PATH    Path to assemblies directory (required)
     -AssemblyFile FILE      Assembly filename (default: Assembly-CSharp.dll)
     -ContainerName NAME     Container name (default: decompiler-server)
-    -ImageName IMAGE        Container image (default: decompiler-server:latest)
-    -Verbose               Enable verbose logging
-    -WatchInterval N       Watch interval in seconds (default: 2)
+    -ImageName IMAGE        Container image (default: localhost/decompiler-server:latest)
+    -VerboseOutput         Enable verbose logging
+    -WatchInterval N       Watch interval in seconds (default: 1)
     -Help                  Show this help
 
 Examples:
     .\watch-container.ps1 -AssembliesPath "C:\Games\Unity\Managed"
-    .\watch-container.ps1 -AssembliesPath ".\assemblies" -Verbose
-    .\watch-container.ps1 -AssembliesPath "C:\Games\Managed" -WatchInterval 1 -Verbose
+    .\watch-container.ps1 -AssembliesPath ".\assemblies" -VerboseOutput
+    .\watch-container.ps1 -AssembliesPath "C:\Games\Managed" -WatchInterval 1 -VerboseOutput
 
 "@
 }
@@ -69,6 +69,19 @@ function Test-Configuration {
         exit 1
     }
 
+    # Verify container image exists
+    try {
+        $imageCheck = & $script:ContainerRuntime images --format "{{.Repository}}:{{.Tag}}" 2>$null | Where-Object { $_ -eq $ImageName }
+        if (-not $imageCheck) {
+            Write-Error "Container image not found: $ImageName"
+            Write-Host "Available images:" -ForegroundColor Yellow
+            & $script:ContainerRuntime images
+            exit 1
+        }
+    } catch {
+        Write-Warning "Could not verify image existence, proceeding anyway"
+    }
+
     return $assemblyFullPath
 }
 
@@ -84,6 +97,11 @@ function Get-FileHash([string]$FilePath) {
 }
 
 function Start-Container {
+    # Clean up any existing containers with the same name
+    Write-Log "Cleaning up existing containers..."
+    & $script:ContainerRuntime stop $ContainerName -t 1 2>$null | Out-Null
+    & $script:ContainerRuntime rm $ContainerName 2>$null | Out-Null
+    
     Write-Log "Starting DecompilerServer container..."
     
     $dockerArgs = @(
@@ -95,7 +113,7 @@ function Start-Container {
         "-e", "ASSEMBLY_PATH=/app/assemblies/$AssemblyFile"
     )
     
-    if ($Verbose) {
+    if ($VerboseOutput) {
         $dockerArgs += @("-e", "DECOMPILER_VERBOSE=true")
     }
     
@@ -128,14 +146,19 @@ function Initialize-Cleanup {
         Stop-Container
     } | Out-Null
 
-    # Handle Ctrl+C
-    [Console]::TreatControlCAsInput = $false
-    [Console]::CancelKeyPress += {
-        param($sender, $e)
-        $e.Cancel = $true
-        Write-Log "Interrupt received, cleaning up..."
-        Stop-Container
-        exit 0
+    # Handle Ctrl+C (with error handling for different PowerShell environments)
+    try {
+        [Console]::TreatControlCAsInput = $false
+        [Console]::CancelKeyPress += {
+            param($sender, $e)
+            $e.Cancel = $true
+            Write-Log "Interrupt received, cleaning up..."
+            Stop-Container
+            exit 0
+        }
+    } catch {
+        Write-Log "Console event handling not available in this environment" "Yellow"
+        # Continue without Ctrl+C handling
     }
 }
 
@@ -154,11 +177,13 @@ function Start-FileWatcher {
     # Start initial container
     Start-Container
     $lastHash = Get-FileHash $AssemblyFullPath
-    Write-Log "Initial hash: $($lastHash.Substring(0,8))... (watching for changes)"
+    Write-Log "Initial hash: $($lastHash.Hash.Substring(0,8))... (watching for changes)"
 
     # Watch loop
+    $script:CheckCount = 0
     while ($true) {
         Start-Sleep -Seconds $WatchInterval
+        $script:CheckCount++
         
         if (-not (Test-Path $AssemblyFullPath)) {
             Write-Warning "Assembly file no longer exists: $AssemblyFullPath"
@@ -167,8 +192,8 @@ function Start-FileWatcher {
 
         $currentHash = Get-FileHash $AssemblyFullPath
         
-        if ($currentHash -ne $lastHash) {
-            Write-Success "Assembly changed! Hash: $($currentHash.Substring(0,8))..."
+        if ($currentHash.Hash -ne $lastHash.Hash) {
+            Write-Success "Assembly changed! Hash: $($currentHash.Hash.Substring(0,8))..."
             
             # Stop current container
             Stop-Container
@@ -181,8 +206,11 @@ function Start-FileWatcher {
             $lastHash = $currentHash
             
             Write-Success "Container restarted with fresh assembly"
-        } elseif ($Verbose) {
-            Write-Log "No changes detected ($($currentHash.Substring(0,8))...)"
+        } elseif ($VerboseOutput) {
+            # Only log every 10th check to reduce noise
+            if ($script:CheckCount % 10 -eq 0) {
+                Write-Log "Status: Monitoring... ($($currentHash.Hash.Substring(0,8))...)"
+            }
         }
     }
 }

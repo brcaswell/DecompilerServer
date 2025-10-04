@@ -13,6 +13,8 @@ A powerful MCP (Model Context Protocol) server for decompiling and analyzing .NE
 - **🧬 Relationship Analysis**: Inheritance tracking, usage analysis, and implementation discovery
 - **📝 Source Management**: Line-precise source slicing and batch decompilation
 - **🛠️ Developer Tools**: IL analysis, AST outlining, and transpiler target suggestions
+- **👁️ File Watching**: Real-time assembly monitoring with executable and container modes
+- **🧪 Testing Framework**: Comprehensive test suite with Unity development simulation
 
 ## 🚀 Quick Start
 
@@ -44,9 +46,17 @@ A powerful MCP (Model Context Protocol) server for decompiling and analyzing .NE
 ```
 DecompilerServer/
 ├── Services/                      # Core service implementations
+│   ├── FileWatcherService.cs     # Real-time assembly change monitoring
+│   └── ...                       # Other core services
 ├── Tools/                         # MCP tool implementations (39 tools)
-├── Tests/                         # xUnit test suite
-├── TestLibrary/                   # Test assembly for validation
+├── Tests/                         # xUnit test suite with file watcher tests
+├── TestLibrary/                   # Test assembly with Unity simulation
+│   ├── UnitySimulation.cs        # Unity-like patterns for testing
+│   └── ...                       # Other test classes
+├── scripts/                       # Container orchestration scripts
+│   ├── watch-container.ps1       # Windows PowerShell file watcher
+│   └── watch-container.sh        # Linux/macOS Bash file watcher
+├── test-filewatcher.ps1          # Comprehensive testing suite
 ├── Properties/                    # Application properties
 ├── Program.cs                     # Application entry point
 ├── ServiceLocator.cs              # Service locator for MCP tools
@@ -387,6 +397,7 @@ docker-compose -f compose.filewatcher.yaml up
 **Performance Characteristics**:
 - **Executable mode**: ~50ms reload time for small-medium assemblies
 - **Container mode**: ~2-3s restart time (includes container startup)
+- **File change detection**: 1-second polling with immediate response
 - **Hash computation**: ~10-100ms depending on assembly size
 - **Memory efficient**: No persistent file content caching
 
@@ -394,6 +405,66 @@ docker-compose -f compose.filewatcher.yaml up
 - **Game Development**: Requires server restart after each game build
 - **Mod Development**: Manual reload needed when mod assemblies change  
 - **CI/CD Pipelines**: Each analysis run should use fresh container instances
+
+### **Testing File Watcher System**
+
+**✅ Comprehensive Test Suite**: Automated testing with realistic Unity development simulation.
+
+#### **Quick Testing with Touch Simulation** (Recommended for development)
+```powershell
+# Test executable mode with fast file timestamp updates
+.\test-filewatcher.ps1 -TestMode executable -SimulateChanges -VerboseOutput
+
+# Test container mode with simulated changes
+.\test-filewatcher.ps1 -TestMode container -SimulateChanges -TestIterations 2
+
+# Test both modes with realistic build cycles
+.\test-filewatcher.ps1 -TestMode both -BuildConfig UnityDev
+```
+
+#### **Testing with Real Assembly Builds**
+The test suite includes enhanced TestLibrary configurations that simulate realistic Unity development:
+
+```powershell
+# Build test assemblies with different feature sets
+dotnet build TestLibrary -c FileWatcherTest    # Minimal features (10,240 bytes)
+dotnet build TestLibrary -c UnityDev          # Extended features (10,752+ bytes)
+
+# Test file watcher with real build cycles
+.\test-filewatcher.ps1 -TestMode both -BuildConfig UnityDev -TestIterations 3
+```
+
+#### **Container Runtime Considerations**
+**Podman Support**: The system is fully compatible with Podman, handling automatic image name prefixing:
+
+```powershell
+# Podman images are prefixed with localhost/
+podman images  # Shows: localhost/decompiler-server:latest
+
+# The scripts automatically detect and use correct image names
+.\scripts\watch-container.ps1 -AssembliesPath ".\test-assemblies\net8.0"
+```
+
+**Docker vs Podman Differences**:
+- **Docker**: `decompiler-server:latest`
+- **Podman**: `localhost/decompiler-server:latest` (auto-detected)
+- **Runtime Detection**: Scripts automatically detect available container runtime
+
+#### **AI-Optimized Testing Settings**
+The file watcher system is optimized for AI-assisted development workflows:
+
+- **1-second polling intervals** (responsive file change detection)
+- **Sampling status updates** (every 10 seconds: 10 checks × 1-second intervals)
+- **Touch simulation** for rapid iteration testing
+- **Controlled verbosity** to minimize noise during development
+
+**Test Results Summary**:
+| Test Mode | Reload Time | Use Case | Memory Usage |
+|-----------|-------------|----------|--------------|
+| Executable + Touch | ~31ms | Rapid iteration | Low |
+| Executable + Build | ~1200ms | Realistic testing | Low |
+| Container + Touch | ~3s | Production simulation | Medium |
+| Container + Build | ~4s | Full integration | Medium |
 
 ### Basic Usage
 

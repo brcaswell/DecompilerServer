@@ -7,4 +7,18 @@
     <AssemblyName>test</AssemblyName>
   </PropertyGroup>
 
+  <!-- File Watcher Testing Configuration -->
+  <PropertyGroup Condition="'$(Configuration)' == 'FileWatcherTest'">
+    <OutputPath>../test-assemblies/</OutputPath>
+    <AssemblyName>Assembly-CSharp</AssemblyName>
+    <DefineConstants>$(DefineConstants);FILEWATCHER_TEST</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Simulated Unity Development Configuration -->
+  <PropertyGroup Condition="'$(Configuration)' == 'UnityDev'">
+    <OutputPath>../unity-assemblies/</OutputPath>
+    <AssemblyName>Assembly-CSharp</AssemblyName>
+    <DefineConstants>$(DefineConstants);UNITY_DEV_SIM</DefineConstants>
+  </PropertyGroup>
+
 </Project>
