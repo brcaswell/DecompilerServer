@@ -16,11 +16,11 @@ This directory contains comprehensive GitHub Actions workflows for the Decompile
 **Key Features**:
 - Test result artifacts uploaded for analysis
 - Code formatting verification with `dotnet format`
-- Container startup validation
+- MCP server container startup validation with JSON-RPC testing
 - Cross-platform compatibility testing
 
 ### 2. File Watcher Integration Tests (`file-watcher-tests.yml`)
-**Triggers**: Push to file watcher branches, PRs affecting file watcher components  
+**Triggers**: Push to any feature branch (`feature/*`), PRs affecting file watcher components  
 **Purpose**: Specialized testing for file watching functionality
 
 **Jobs**:
@@ -32,6 +32,7 @@ This directory contains comprehensive GitHub Actions workflows for the Decompile
 - Podman compatibility validation with localhost/ image naming
 - FileWatcherTest build configuration testing
 - Container orchestration script validation
+- MCP server request-response behavior testing
 
 ### 3. Release Build (`release.yml`)
 **Triggers**: Git tags (v*), GitHub releases  
@@ -74,10 +75,9 @@ All workflows are designed to work within GitHub's free tier limits:
 ## Usage Examples
 
 ### Development Workflow
-1. **Feature Development**: Push to `feature/*` branches triggers build-and-test
-2. **File Watcher Work**: Push to `feature/*file*watcher*` branches triggers specialized tests
-3. **Pull Request**: Creates full validation across multiple jobs
-4. **Main/Develop**: Full quality checks including scheduled analysis
+1. **Feature Development**: Push to `feature/*` branches triggers both build-and-test and file-watcher-tests
+2. **Pull Request**: Creates full validation across multiple jobs
+3. **Main/Develop**: Full quality checks including scheduled analysis
 
 ### Release Process
 1. **Create Git Tag**: `git tag v1.0.0 && git push origin v1.0.0`
