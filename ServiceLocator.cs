@@ -16,13 +16,13 @@ public static class ServiceLocator
     /// <summary>
     /// Sets the service provider. Uses global storage for production, thread-local for tests.
     /// </summary>
-    public static void SetServiceProvider(IServiceProvider serviceProvider)
+    public static void SetServiceProvider(IServiceProvider? serviceProvider)
     {
         // Always set thread-local for test compatibility
         _threadLocalProvider.Value = serviceProvider;
 
-        // Also set global if not already set (production scenario)
-        if (_globalProvider == null)
+        // Also set global if not null and not already set (production scenario)
+        if (serviceProvider != null && _globalProvider == null)
         {
             lock (_lock)
             {
@@ -40,6 +40,17 @@ public static class ServiceLocator
             throw new InvalidOperationException("Service provider not initialized for current thread");
 
         return provider.GetRequiredService<T>();
+    }
+
+    /// <summary>
+    /// Clears the global provider. This is intended for testing purposes only.
+    /// </summary>
+    public static void ClearGlobalProvider()
+    {
+        lock (_lock)
+        {
+            _globalProvider = null;
+        }
     }
 
     public static AssemblyContextManager ContextManager => GetRequiredService<AssemblyContextManager>();

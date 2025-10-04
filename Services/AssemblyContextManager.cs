@@ -337,24 +337,24 @@ public class AssemblyContextManager : IDisposable
         {
             // Standard Unity patterns
             "Managed",
-            "Data/Managed",
-            $"{gameBaseName}_Data/Managed",
+            Path.Combine("Data", "Managed"),
+            Path.Combine($"{gameBaseName}_Data", "Managed"),
             
             // Platform-specific Unity patterns
-            $"{gameBaseName}Win64_Data/Managed",
-            $"{gameBaseName}Win32_Data/Managed",
-            $"{gameBaseName}Linux_Data/Managed",
-            $"{gameBaseName}Mac_Data/Managed",
+            Path.Combine($"{gameBaseName}Win64_Data", "Managed"),
+            Path.Combine($"{gameBaseName}Win32_Data", "Managed"),
+            Path.Combine($"{gameBaseName}Linux_Data", "Managed"),
+            Path.Combine($"{gameBaseName}Mac_Data", "Managed"),
             
             // Alternative Unity patterns
-            $"{gameBaseName}x64_Data/Managed",
-            $"{gameBaseName}x86_Data/Managed",
+            Path.Combine($"{gameBaseName}x64_Data", "Managed"),
+            Path.Combine($"{gameBaseName}x86_Data", "Managed"),
             
             // Unity standalone builds (macOS)
-            "Contents/Resources/Data/Managed",
+            Path.Combine("Contents", "Resources", "Data", "Managed"),
             
             // UWP builds
-            "Package/Managed"
+            Path.Combine("Package", "Managed")
         };
 
         // Try all Unity path patterns
