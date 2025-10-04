@@ -124,22 +124,62 @@ docker run -i --rm \
 
 ## 🤖 AI Tool Integration
 
-Configure with AI assistants via MCP (Model Context Protocol):
+DecompilerServer supports two deployment modes for MCP (Model Context Protocol) integration:
 
-**Codex** (`.codex/config.toml`):
-```toml
-[mcp_servers.decompiler]
-command = "path_to_DecompilerServer.exe"
-args = []
+### 📦 Containerized MCP Server (Recommended)
+
+For isolated, secure analysis with automatic cleanup:
+
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "decompiler": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "/path/to/your/assemblies:/app/assemblies:ro",
+        "-e", "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll",
+        "decompiler-server:latest"
+      ]
+    }
+  }
+}
 ```
 
 **GitHub Copilot** (`.copilot/config.yaml`):
 ```yaml
 servers:
   decompiler:
-    command: "path_to_DecompilerServer.exe"
-    args: []
+    command: "docker"
+    args:
+      - "run"
+      - "-i"
+      - "--rm"
+      - "-v"
+      - "/path/to/your/assemblies:/app/assemblies:ro"
+      - "-e"
+      - "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll"
+      - "decompiler-server:latest"
 ```
+
+**Codex** (`.codex/config.toml`):
+```toml
+[mcp_servers.decompiler]
+command = "docker"
+args = [
+  "run", "-i", "--rm",
+  "-v", "/path/to/your/assemblies:/app/assemblies:ro",
+  "-e", "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll",
+  "decompiler-server:latest"
+]
+```
+
+**For Podman users**, simply replace `"docker"` with `"podman"` in the command field.
+
+### 🔧 Direct Executable MCP Server
+
+For development environments with .NET 8.0 installed:
 
 **Claude Desktop** (`claude_desktop_config.json`):
 ```json
@@ -153,11 +193,143 @@ servers:
 }
 ```
 
+**GitHub Copilot** (`.copilot/config.yaml`):
+```yaml
+servers:
+  decompiler:
+    command: "path_to_DecompilerServer.exe"
+    args: []
+```
 
+**Codex** (`.codex/config.toml`):
+```toml
+[mcp_servers.decompiler]
+command = "path_to_DecompilerServer.exe"
+args = []
+```
+
+### 🎯 Container vs Executable Comparison
+
+| Feature | Containerized | Direct Executable |
+|---------|---------------|-------------------|
+| **Setup** | Docker/Podman required | .NET 8.0 SDK required |
+| **Isolation** | ✅ Complete isolation | ❌ Runs in host environment |
+| **Security** | ✅ Read-only volume mounting | ⚠️ Full host access |
+| **Dependencies** | ✅ Self-contained | ❌ Requires .NET runtime |
+| **Cleanup** | ✅ Automatic via `--rm` | ❌ Manual process management |
+| **Performance** | ~5% container overhead | Fastest startup |
+| **Portability** | ✅ Works anywhere | OS/architecture dependent |
+
+**Recommendation**: Use containerized deployment for production and secure analysis workflows.
+
+### 🐳 Container Configuration Tips
+
+**Multi-Assembly Support**: Mount multiple directories for complex projects:
+```json
+{
+  "mcpServers": {
+    "decompiler": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "/path/to/game/Managed:/app/assemblies:ro",
+        "-v", "/path/to/mods:/app/mods:ro",
+        "-e", "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll",
+        "decompiler-server:latest"
+      ]
+    }
+  }
+}
+```
+
+**Debug Mode**: Enable verbose logging for troubleshooting:
+```json
+{
+  "mcpServers": {
+    "decompiler": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "/path/to/assemblies:/app/assemblies:ro",
+        "-e", "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll",
+        "-e", "DECOMPILER_VERBOSE=true",
+        "decompiler-server:latest"
+      ]
+    }
+  }
+}
+```
+
+**Windows Path Example**: Use Windows-style paths with forward slashes in Docker:
+```json
+{
+  "mcpServers": {
+    "decompiler": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "C:/Games/MyGame/MyGame_Data/Managed:/app/assemblies:ro",
+        "-e", "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll",
+        "decompiler-server:latest"
+      ]
+    }
+  }
+}
+```
+
+### 🔄 Environment Variables & Server Lifecycle
+
+**Important**: Environment variable changes require a server restart to take effect.
+
+**For Containerized Deployment**:
+- Each container run uses fresh environment variables from the MCP configuration
+- No manual restart needed - the `--rm` flag ensures each session starts clean
+- To change assembly paths, update your MCP client configuration and restart the AI assistant
+
+**For Direct Executable Deployment**:
+- Environment variables are read once at server startup
+- Changes to `ASSEMBLY_PATH` or `DECOMPILER_VERBOSE` require stopping and restarting the server process
+- Use `Ctrl+C` to stop, then restart with `dotnet run --project DecompilerServer`
+
+**Quick Assembly Switching**: For frequent assembly changes, use the containerized approach with parameterized paths in your MCP client configuration.
+
+### 👁️ File Watching & Auto-Reload
+
+**Current Status**: File watching is not currently implemented but is planned for future releases.
+
+**Current Behavior**:
+- Assemblies are loaded once at server startup or via `LoadAssembly` tool
+- Changes to assembly files require manual server restart or reload
+- Container deployment automatically gets fresh state on each run
+
+**Planned File Watching Features** (see [TODO.md](TODO.md#todo-014-real-time-analysis-and-watching)):
+- **FileSystemWatcher integration** for automatic assembly change detection  
+- **Incremental recompilation** for faster reload cycles
+- **Delta reporting** to show what changed between assembly versions
+- **Hot-reload notifications** via MCP protocol events
+
+**Current Workarounds**:
+```bash
+# For development: Use containerized deployment for automatic fresh state
+docker run -i --rm -v "/path/to/assemblies:/app/assemblies:ro" decompiler-server:latest
+
+# For executable: Manual restart when assemblies change
+# Stop with Ctrl+C, then restart:
+dotnet run --project DecompilerServer -- --verbose
+```
+
+**Development Impact**: 
+- **Game Development**: Requires server restart after each game build
+- **Mod Development**: Manual reload needed when mod assemblies change  
+- **CI/CD Pipelines**: Each analysis run should use fresh container instances
 
 ### Basic Usage
 
-1. **Start the server**:
+#### For Containerized Deployment (Recommended)
+Configuration is handled entirely through MCP client setup - no manual server startup required. The container starts automatically when your AI assistant connects.
+
+#### For Direct Executable Deployment
+1. **Start the server manually**:
    ```bash
    dotnet run --project DecompilerServer
    ```
@@ -167,6 +339,7 @@ servers:
    dotnet run --project DecompilerServer -- --verbose
    ```
 
+#### Common MCP Operations (Both Deployment Types)
 2. **Load any .NET assembly** (via MCP client):
    ```json
    {
