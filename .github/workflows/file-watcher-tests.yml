@@ -27,11 +27,27 @@ jobs:
     - name: Build solution
       run: dotnet build DecompilerServer.sln --configuration Release
     
-    - name: Build TestLibrary with FileWatcherTest config
-      run: dotnet build TestLibrary/TestLibrary.csproj --configuration FileWatcherTest
+    - name: Build all TestLibrary configurations
+      run: |
+        echo "Building all TestLibrary configurations..."
+        dotnet build TestLibrary/TestLibrary.csproj --configuration Debug
+        dotnet build TestLibrary/TestLibrary.csproj --configuration FileWatcherTest  
+        dotnet build TestLibrary/TestLibrary.csproj --configuration UnityDev
+        
+    - name: Verify build outputs
+      run: |
+        echo "Verifying FileWatcherTest output..."
+        ls -la test-assemblies/ || echo "No test-assemblies directory"
+        echo "Verifying UnityDev output..."  
+        ls -la unity-assemblies/ || echo "No unity-assemblies directory"
+        echo "Verifying Debug output..."
+        ls -la TestLibrary/bin/Debug/net8.0/ || echo "No Debug output"
+    
+    - name: Build Tests project
+      run: dotnet build Tests/Tests.csproj --configuration Debug
     
     - name: Test FileWatcherService unit tests
-      run: dotnet test Tests/Tests.csproj --configuration Release --filter "ClassName~FileWatcher" --verbosity normal
+      run: dotnet test Tests/Tests.csproj --configuration Debug --filter "ClassName~FileWatcher" --verbosity normal
     
     - name: Install Podman for container testing
       run: |
@@ -41,43 +57,104 @@ jobs:
     - name: Build container image for testing
       run: podman build -t localhost/decompiler-server:latest .
     
-    - name: Test executable mode file watcher
+    - name: Test executable mode file watcher (FileWatcherTest config)
       run: |
-        # Copy test assembly to known location
-        mkdir -p /tmp/test-assembly
-        cp TestLibrary/bin/FileWatcherTest/net8.0/test.dll /tmp/test-assembly/
+        # Test with FileWatcherTest configuration (Assembly-CSharp.dll)
+        mkdir -p /tmp/test-filewatcher
+        cp test-assemblies/net8.0/Assembly-CSharp.dll /tmp/test-filewatcher/
         
-        # Start app with --watch flag in background
-        dotnet run --project DecompilerServer.csproj -- --watch --assembly-path /tmp/test-assembly/test.dll &
-        APP_PID=$!
-        
-        # Wait for startup
-        sleep 3
-        
-        # Simulate file change by touching
-        touch /tmp/test-assembly/test.dll
-        
-        # Wait for detection
-        sleep 2
-        
-        # Clean up
-        kill $APP_PID || true
-        
-        echo "Executable mode file watcher test completed"
+        echo "Testing file watcher with FileWatcherTest configuration..."
+        timeout 15s bash -c '
+          dotnet run --project DecompilerServer.csproj -- --watch --assembly-path /tmp/test-filewatcher/Assembly-CSharp.dll &
+          APP_PID=$!
+          sleep 5
+          echo "Simulating file change..."
+          touch /tmp/test-filewatcher/Assembly-CSharp.dll
+          sleep 5
+          kill $APP_PID 2>/dev/null || true
+          echo "FileWatcherTest configuration test completed"
+        '
     
-    - name: Test container orchestration scripts
+    - name: Test executable mode file watcher (UnityDev config)  
+      run: |
+        # Test with UnityDev configuration (Assembly-CSharp.dll)
+        mkdir -p /tmp/test-unitydev
+        cp unity-assemblies/net8.0/Assembly-CSharp.dll /tmp/test-unitydev/
+        
+        echo "Testing file watcher with UnityDev configuration..."
+        timeout 15s bash -c '
+          dotnet run --project DecompilerServer.csproj -- --watch --assembly-path /tmp/test-unitydev/Assembly-CSharp.dll &
+          APP_PID=$!
+          sleep 5
+          echo "Simulating file change..."
+          touch /tmp/test-unitydev/Assembly-CSharp.dll
+          sleep 5  
+          kill $APP_PID 2>/dev/null || true
+          echo "UnityDev configuration test completed"
+        '
+    
+    - name: Test container orchestration scripts (FileWatcherTest)
       run: |
         # Make scripts executable
         chmod +x scripts/watch-container.sh
         
-        # Copy test assembly
-        mkdir -p /tmp/test-container-assembly
-        cp TestLibrary/bin/FileWatcherTest/net8.0/test.dll /tmp/test-container-assembly/
+        # Test with FileWatcherTest configuration
+        mkdir -p /tmp/test-container-filewatcher  
+        cp test-assemblies/net8.0/Assembly-CSharp.dll /tmp/test-container-filewatcher/
         
-        # Test the bash script (short run)
-        timeout 10s scripts/watch-container.sh /tmp/test-container-assembly/test.dll || true
+        echo "Testing container orchestration with FileWatcherTest config..."
+        timeout 15s scripts/watch-container.sh /tmp/test-container-filewatcher/Assembly-CSharp.dll || true
         
-        echo "Container orchestration test completed"
+    - name: Test container orchestration scripts (UnityDev)
+      run: |
+        # Test with UnityDev configuration  
+        mkdir -p /tmp/test-container-unitydev
+        cp unity-assemblies/net8.0/Assembly-CSharp.dll /tmp/test-container-unitydev/
+        
+        echo "Testing container orchestration with UnityDev config..."
+        timeout 15s scripts/watch-container.sh /tmp/test-container-unitydev/Assembly-CSharp.dll || true
+        
+        echo "Container orchestration tests completed"
+    
+    - name: Validate build configuration differences
+      run: |
+        echo "=== Validating FileWatcherTest vs UnityDev differences ==="
+        
+        # Use strings command to check for compilation constants
+        echo "FileWatcherTest build contains:"
+        strings test-assemblies/net8.0/Assembly-CSharp.dll | grep -E "(FILEWATCHER|TEST)" || echo "No FILEWATCHER_TEST constants found"
+        
+        echo "UnityDev build contains:"  
+        strings unity-assemblies/net8.0/Assembly-CSharp.dll | grep -E "(UNITY|DEV)" || echo "No UNITY_DEV_SIM constants found"
+        
+        # Compare file sizes (they should be different due to conditional compilation)
+        FILEWATCHER_SIZE=$(stat -f%z test-assemblies/net8.0/Assembly-CSharp.dll 2>/dev/null || stat -c%s test-assemblies/net8.0/Assembly-CSharp.dll)
+        UNITYDEV_SIZE=$(stat -f%z unity-assemblies/net8.0/Assembly-CSharp.dll 2>/dev/null || stat -c%s unity-assemblies/net8.0/Assembly-CSharp.dll)
+        
+        echo "FileWatcherTest size: $FILEWATCHER_SIZE bytes"
+        echo "UnityDev size: $UNITYDEV_SIZE bytes"
+        
+        if [ "$FILEWATCHER_SIZE" != "$UNITYDEV_SIZE" ]; then
+          echo "✅ Build configurations produce different outputs (conditional compilation working)"
+        else
+          echo "⚠️  Build configurations produce identical outputs (conditional compilation may not be working)"
+        fi
+    
+    - name: Test PowerShell file watcher script (all configurations)
+      run: |
+        # Install PowerShell for comprehensive testing
+        sudo apt-get update
+        sudo apt-get install -y wget apt-transport-https software-properties-common
+        wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb"
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update
+        sudo apt-get install -y powershell
+        
+        echo "Testing FileWatcherTest configuration with PowerShell script..."
+        pwsh -File test-filewatcher.ps1 -TestMode executable -BuildConfig FileWatcherTest -TestIterations 2 -SimulateChanges -VerboseOutput
+        
+        echo "Testing UnityDev configuration with PowerShell script..."  
+        pwsh -File test-filewatcher.ps1 -TestMode executable -BuildConfig UnityDev -TestIterations 2 -SimulateChanges -VerboseOutput
 
   podman-compatibility:
     name: Podman Compatibility Test
