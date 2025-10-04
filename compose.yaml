@@ -1,0 +1,7 @@
+
+services:
+  decompilerserver:
+    image: decompilerserver
+    build:
+      context: .
+      dockerfile: ./Dockerfile

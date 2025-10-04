@@ -1,0 +1,11 @@
+
+services:
+  decompilerserver:
+    image: decompilerserver
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        - configuration=Debug
+    volumes:
+      - ~/.vsdbg:/remote_debugger:rw

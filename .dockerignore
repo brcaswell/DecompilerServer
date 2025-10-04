@@ -1,0 +1,63 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Runtime files
+**/.vs/
+**/.vscode/
+**/.idea/
+
+# Documentation and metadata
+**/*.md
+**/LICENSE
+**/.git/
+**/.gitignore
+**/.gitattributes
+
+# Test files and debugging
+**/Tests/
+**/TestResults/
+**/*.Tests/
+**/*Tests.cs
+**/*.user
+**/*.suo
+
+# Docker files (avoid recursion)
+**/Dockerfile*
+**/docker-compose*
+**/.dockerignore
+
+# OS generated files
+**/.DS_Store
+**/Thumbs.db
+**/*.tmp
+**/*.temp
+
+# IDE and editor files
+**/*.swp
+**/*.swo
+**/.*~
+
+# Package files
+**/*.nupkg
+**/*.snupkg
+
+# Environment and secrets
+**/.env
+**/.env.*
+**/secrets.json
+
+# Logs
+**/*.log
+**/logs/
+
+# Additional exclusions for smaller build context
+**/compose.yaml
+**/compose.debug.yaml
+**/.github/
+**/TODO.md
+**/TESTING.md
+**/HELPER_METHODS_GUIDE.md
+**/AGENTS.md
+**/CommonImplementorGuide.txt

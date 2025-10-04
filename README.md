@@ -39,7 +39,88 @@ A powerful MCP (Model Context Protocol) server for decompiling and analyzing .NE
    dotnet test
    ```
 
-> **💡 Tip**: See [🤖 AI Tool Integration](#-ai-tool-integration) to configure with AI assistants.
+## 📁 Project Structure
+
+```
+DecompilerServer/
+├── Services/                      # Core service implementations
+├── Tools/                         # MCP tool implementations (39 tools)
+├── Tests/                         # xUnit test suite
+├── TestLibrary/                   # Test assembly for validation
+├── Properties/                    # Application properties
+├── Program.cs                     # Application entry point
+├── ServiceLocator.cs              # Service locator for MCP tools
+├── StartupLogService.cs           # Startup logging service
+├── StderrLogger.cs                # Custom stderr logger for MCP
+├── Dockerfile                     # Container configuration
+├── .dockerignore                  # Docker build exclusions
+├── compose.yaml                   # Docker Compose configuration
+├── compose.debug.yaml             # Docker Compose debug configuration
+├── DecompilerServer.sln           # Solution file
+└── *.md                           # Documentation files
+```
+
+
+
+## 🐳 Docker/Podman Support
+
+DecompilerServer provides full containerization support for easy deployment and integration with development workflows.
+
+### Building the Container Image
+
+1. **Build the Docker image**:
+   ```bash
+   docker build -t decompiler-server:latest .
+   ```
+
+   **Or with Podman**:
+   ```bash
+   podman build -t decompiler-server:latest .
+   ```
+
+2. **Verify the build**:
+   ```bash
+   docker run --rm decompiler-server:latest echo "Container is ready"
+   ```
+
+
+
+### Container Usage Examples
+
+**Analyze a Unity Game**:
+```bash
+docker run -i --rm \
+  -v "/path/to/YourGame/YourGame_Data/Managed:/app/assemblies:ro" \
+  -e "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll" \
+  decompiler-server:latest
+```
+
+**Analyze Any .NET Assembly**:
+```bash
+docker run -i --rm \
+  -v "/path/to/your/dlls:/app/assemblies:ro" \
+  -e "ASSEMBLY_PATH=/app/assemblies/YourLibrary.dll" \
+  decompiler-server:latest
+```
+
+**Enable Verbose Logging for Debugging**:
+```bash
+docker run -i --rm \
+  -v "/path/to/your/assemblies:/app/assemblies:ro" \
+  -e "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll" \
+  -e "DECOMPILER_VERBOSE=true" \
+  decompiler-server:latest
+```
+
+### Container Features
+
+- **🔒 Secure**: Read-only volume mounting prevents container from modifying your files
+- **🚀 Fast Startup**: Optimized container layers for quick initialization
+- **📦 Self-Contained**: No need to install .NET runtime on host system
+- **🔄 Stateless**: Each container run is isolated and clean
+- **⚖️ Lightweight**: Minimal container footprint with only required dependencies
+
+
 
 ## 🤖 AI Tool Integration
 
@@ -72,22 +153,18 @@ servers:
 }
 ```
 
-**VS Code MCP Extension** (`.vscode/settings.json`):
-```json
-{
-  "mcp.servers": [{
-    "name": "decompiler",
-    "command": "path_to_DecompilerServer.exe",
-    "args": []
-  }]
-}
-```
+
 
 ### Basic Usage
 
 1. **Start the server**:
    ```bash
    dotnet run --project DecompilerServer
+   ```
+   
+   **Or with verbose logging for debugging**:
+   ```bash
+   dotnet run --project DecompilerServer -- --verbose
    ```
 
 2. **Load any .NET assembly** (via MCP client):
