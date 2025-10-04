@@ -22,14 +22,14 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore DecompilerServer.sln
     
-    - name: Build solution
+    - name: Build solution (Release)
       run: dotnet build DecompilerServer.sln --no-restore --configuration Release
     
-    - name: Build TestLibrary
-      run: dotnet build TestLibrary/TestLibrary.csproj --no-restore --configuration Release
+    - name: Build solution (Debug for tests)
+      run: dotnet build DecompilerServer.sln --no-restore --configuration Debug
     
     - name: Run unit tests
-      run: dotnet test Tests/Tests.csproj --no-build --verbosity normal --configuration Release --logger trx --results-directory TestResults
+      run: dotnet test Tests/Tests.csproj --no-build --verbosity normal --configuration Debug --logger trx --results-directory TestResults
     
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -83,8 +83,11 @@ jobs:
       with:
         dotnet-version: '8.0.x'
     
-    - name: Build solution
+    - name: Build solution (Release)
       run: dotnet build DecompilerServer.sln --configuration Release
     
+    - name: Build solution (Debug for tests) 
+      run: dotnet build DecompilerServer.sln --configuration Debug
+    
     - name: Run quick tests
-      run: dotnet test Tests/Tests.csproj --configuration Release --filter "TestCategory!=Integration" --verbosity minimal
+      run: dotnet test Tests/Tests.csproj --configuration Debug --filter "TestCategory!=Integration" --verbosity minimal
