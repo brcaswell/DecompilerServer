@@ -1,0 +1,102 @@
+name: File Watcher Integration Tests
+
+on:
+  push:
+    branches: [ 'feature/container-file-watcher', 'feature/*file*watcher*' ]
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'Services/FileWatcherService.cs'
+      - 'scripts/watch-container.*'
+      - 'test-filewatcher.ps1'
+      - '.github/workflows/file-watcher-tests.yml'
+
+jobs:
+  file-watcher-tests:
+    name: File Watcher Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Build solution
+      run: dotnet build DecompilerServer.sln --configuration Release
+    
+    - name: Build TestLibrary with FileWatcherTest config
+      run: dotnet build TestLibrary/TestLibrary.csproj --configuration FileWatcherTest
+    
+    - name: Test FileWatcherService unit tests
+      run: dotnet test Tests/Tests.csproj --configuration Release --filter "ClassName~FileWatcher" --verbosity normal
+    
+    - name: Install Podman for container testing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y podman
+    
+    - name: Build container image for testing
+      run: podman build -t localhost/decompiler-server:latest .
+    
+    - name: Test executable mode file watcher
+      run: |
+        # Copy test assembly to known location
+        mkdir -p /tmp/test-assembly
+        cp TestLibrary/bin/FileWatcherTest/net8.0/test.dll /tmp/test-assembly/
+        
+        # Start app with --watch flag in background
+        dotnet run --project DecompilerServer.csproj -- --watch --assembly-path /tmp/test-assembly/test.dll &
+        APP_PID=$!
+        
+        # Wait for startup
+        sleep 3
+        
+        # Simulate file change by touching
+        touch /tmp/test-assembly/test.dll
+        
+        # Wait for detection
+        sleep 2
+        
+        # Clean up
+        kill $APP_PID || true
+        
+        echo "Executable mode file watcher test completed"
+    
+    - name: Test container orchestration scripts
+      run: |
+        # Make scripts executable
+        chmod +x scripts/watch-container.sh
+        
+        # Copy test assembly
+        mkdir -p /tmp/test-container-assembly
+        cp TestLibrary/bin/FileWatcherTest/net8.0/test.dll /tmp/test-container-assembly/
+        
+        # Test the bash script (short run)
+        timeout 10s scripts/watch-container.sh /tmp/test-container-assembly/test.dll || true
+        
+        echo "Container orchestration test completed"
+
+  podman-compatibility:
+    name: Podman Compatibility Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Podman
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y podman
+    
+    - name: Build with Podman
+      run: podman build -t localhost/decompiler-server:latest .
+    
+    - name: Test Podman container startup
+      run: |
+        podman run --rm -d --name podman-test localhost/decompiler-server:latest
+        sleep 5
+        podman ps | grep podman-test
+        podman stop podman-test || true
