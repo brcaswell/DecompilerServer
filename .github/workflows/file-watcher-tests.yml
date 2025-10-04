@@ -2,7 +2,7 @@ name: File Watcher Integration Tests
 
 on:
   push:
-    branches: [ 'feature/container-file-watcher', 'feature/*file*watcher*' ]
+    branches: [ 'feature/container-file-watcher', 'feature/*file*watcher*', 'feature/cicd-workflows' ]
   pull_request:
     branches: [ main, develop ]
     paths:
@@ -271,16 +271,13 @@ jobs:
         echo "Starting container with test MCP message..."
         
         # Create a simple MCP initialize request
-        cat > test_mcp_request.json << 'EOF'
-{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}
-EOF
+        cat > test_mcp_request.json << EOF
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}
+        EOF
         
         # Test that container starts and can process MCP input
-        if timeout 10s bash -c '
-          echo "Running container with MCP input..."
-          cat test_mcp_request.json | podman run --rm -i localhost/decompiler-server:latest
-        '; then
-          echo "✅ Container processed MCP input successfully"
+        if timeout 10s bash -c "echo 'Running container with MCP input...'; cat test_mcp_request.json | podman run --rm -i localhost/decompiler-server:latest"; then
+          echo "Container processed MCP input successfully"
         else
           EXIT_CODE=$?
           echo "Container output test completed with exit code: $EXIT_CODE"
@@ -289,13 +286,8 @@ EOF
           # The important thing is that the container starts without error
           echo "Testing basic container startup without input..."
           
-          if timeout 5s bash -c '
-            CONTAINER_ID=$(podman run --rm -d localhost/decompiler-server:latest sleep 5)
-            echo "Container started with ID: $CONTAINER_ID"
-            sleep 1
-            echo "✅ Container starts successfully"
-          '; then
-            echo "✅ Podman container startup test passed"
+          if timeout 5s bash -c "CONTAINER_ID=\$(podman run --rm -d localhost/decompiler-server:latest sleep 5); echo 'Container started with ID:' \$CONTAINER_ID; sleep 1; echo 'Container starts successfully'"; then
+            echo "Podman container startup test passed"
           else
             echo "❌ Container failed to start properly"
             echo "Testing container logs for errors..."
