@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  decompiler-server-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: final
+    image: decompiler-server:latest
+    container_name: decompiler-server-watcher
+    restart: unless-stopped
+    volumes:
+      # Mount assemblies as read-only
+      - "${ASSEMBLIES_PATH}:/app/assemblies:ro"
+      # Mount the orchestrator script
+      - "./scripts:/app/scripts:ro"
+      # Allow the orchestrator to manage Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - ASSEMBLY_PATH=/app/assemblies/${ASSEMBLY_FILE:-Assembly-CSharp.dll}
+      - DECOMPILER_VERBOSE=${DECOMPILER_VERBOSE:-false}
+    # Override entrypoint to use the orchestrator
+    entrypoint: ["/app/scripts/watch-container.sh"]
+    command: 
+      - "--path"
+      - "/app/assemblies" 
+      - "--file"
+      - "${ASSEMBLY_FILE:-Assembly-CSharp.dll}"
+      - "--name"
+      - "decompiler-server-worker"
+      - "--image"
+      - "decompiler-server:latest"
+    privileged: true
+    networks:
+      - decompiler-network
+
+  # This is the actual worker container that gets restarted
+  decompiler-server-worker:
+    image: decompiler-server:latest
+    container_name: decompiler-server-worker
+    volumes:
+      - "${ASSEMBLIES_PATH}:/app/assemblies:ro"
+    environment:
+      - ASSEMBLY_PATH=/app/assemblies/${ASSEMBLY_FILE:-Assembly-CSharp.dll}
+      - DECOMPILER_VERBOSE=${DECOMPILER_VERBOSE:-false}
+    stdin_open: true
+    tty: false
+    networks:
+      - decompiler-network
+    # This container is managed by the watcher, so don't auto-restart
+    restart: "no"
+
+networks:
+  decompiler-network:
+    driver: bridge
+
+# Usage:
+#   ASSEMBLIES_PATH=/path/to/game/Managed docker-compose -f compose.filewatcher.yaml up
+#   ASSEMBLIES_PATH=/path/to/game/Managed ASSEMBLY_FILE=Assembly-CSharp.dll DECOMPILER_VERBOSE=true docker-compose -f compose.filewatcher.yaml up
