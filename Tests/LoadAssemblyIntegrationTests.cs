@@ -47,7 +47,11 @@ public class LoadAssemblyIntegrationTests : IDisposable
         Assert.DoesNotContain("error", result);
         Assert.Contains("mvid", result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("assemblyPath", result, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(targetAssemblyPath.Replace("\\", "/"), result.Replace("\\", "/"));
+        
+        // Normalize paths for comparison - handle double slashes and mixed separators
+        var expectedPath = targetAssemblyPath.Replace("\\", "/");
+        var normalizedResult = result.Replace("\\", "/").Replace("//", "/");
+        Assert.Contains(expectedPath, normalizedResult);
     }
 
     [Fact]

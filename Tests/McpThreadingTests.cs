@@ -89,8 +89,14 @@ public class McpThreadingTests : ServiceTestBase
     [Fact]
     public void McpTools_Should_Work_Without_ThreadLocal_ServiceProvider()
     {
+        // Clear any existing global provider to start fresh
+        ServiceLocator.ClearGlobalProvider();
+        
+        // Ensure global provider is set first (simulates production startup)
+        ServiceLocator.SetServiceProvider(_serviceProvider);
+
         // Explicitly clear thread-local provider to simulate MCP worker thread
-        ServiceLocator.SetServiceProvider(null!);
+        ServiceLocator.SetServiceProvider(null);
 
         // The global provider should still allow tools to work
         var result = PingTool.Ping();
