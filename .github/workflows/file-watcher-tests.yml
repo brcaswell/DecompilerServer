@@ -148,11 +148,17 @@ jobs:
         
         echo "Testing container orchestration script validation with FileWatcherTest config..."
         
+        # Test help functionality separately
+        echo "Testing script help functionality..."
+        if scripts/watch-container.sh --help >/dev/null 2>&1; then
+          echo "✅ Help functionality works"
+        else
+          echo "❌ Help functionality failed"
+          exit 1
+        fi
+        
         # Test script parameter validation and container startup without long-running test
-        if timeout 5s bash -c '
-          echo "Testing script parameter validation..."
-          scripts/watch-container.sh -p /tmp/test-container-filewatcher --help >/dev/null 2>&1 || true
-          
+        if timeout 5s bash -c '          
           echo "Testing container startup (brief test)..."
           scripts/watch-container.sh -p /tmp/test-container-filewatcher &
           SCRIPT_PID=$!
