@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace DecompilerServer.Services;
 
@@ -226,23 +228,69 @@ public class ResponseFormatter
     }
 
     /// <summary>
-    /// Try to execute an operation and return formatted response
+    /// Try to execute an operation and return formatted response with MCP logging
     /// </summary>
-    public static string TryExecute<T>(Func<T> operation)
+    public static string TryExecute<T>(Func<T> operation, [CallerMemberName] string? toolName = null)
     {
-        return TryExecuteInternal(() => Success(operation()));
+        return TryExecuteWithLogging(() => Success(operation()), toolName);
     }
 
     /// <summary>
-    /// Try to execute an operation that returns void and return formatted response
+    /// Try to execute an operation that returns void and return formatted response with MCP logging
     /// </summary>
-    public static string TryExecute(Action operation)
+    public static string TryExecute(Action operation, [CallerMemberName] string? toolName = null)
     {
-        return TryExecuteInternal(() =>
+        return TryExecuteWithLogging(() =>
         {
             operation();
             return Success();
-        });
+        }, toolName);
+    }
+
+    /// <summary>
+    /// Try to execute an operation with parameters logging and return formatted response
+    /// </summary>
+    public static string TryExecute<T>(Func<T> operation, object? parameters, [CallerMemberName] string? toolName = null)
+    {
+        return TryExecuteWithLogging(() => Success(operation()), toolName, parameters);
+    }
+
+    /// <summary>
+    /// Enhanced execution with MCP logging integration
+    /// </summary>
+    private static string TryExecuteWithLogging(Func<string> operation, string? toolName = null, object? parameters = null)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var mcpLogger = ServiceLocator.McpLogger;
+        
+        try
+        {
+            var result = operation();
+            stopwatch.Stop();
+            
+            // Log successful tool call
+            mcpLogger?.LogToolCall(
+                toolName ?? "Unknown", 
+                parameters, 
+                stopwatch.Elapsed, 
+                success: true);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            
+            // Log failed tool call
+            mcpLogger?.LogToolCall(
+                toolName ?? "Unknown", 
+                parameters, 
+                stopwatch.Elapsed, 
+                success: false, 
+                error: ex.Message);
+            
+            return TryExecuteInternal(() => throw ex);
+        }
     }
 
     /// <summary>

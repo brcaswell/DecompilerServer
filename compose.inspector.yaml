@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  decompiler-server:
+    build: .
+    environment:
+      - DECOMPILER_VERBOSE=true
+      - McpLogging__EnableInspector=true
+      - McpLogging__LogToolCalls=true
+      - McpLogging__UseCorrelationIds=true
+      - Serilog__MinimumLevel__Default=Information
+      - Serilog__WriteTo__0__Args__restrictedToMinimumLevel=Information
+      - Serilog__WriteTo__2__Args__serverUrl=http://seq-server:5341
+    volumes:
+      - "./unity-assemblies:/app/assemblies:ro"
+      - "./logs:/app/logs"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - seq-server
+    networks:
+      - mcp-network
+
+  seq-server:
+    image: datalust/seq:latest
+    ports:
+      - "5341:80"
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORDHASH=
+    volumes:
+      - seq-data:/data
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  seq-data:
+    driver: local

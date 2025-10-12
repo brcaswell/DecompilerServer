@@ -42,6 +42,17 @@ public static class ServiceLocator
         return provider.GetRequiredService<T>();
     }
 
+    public static T? GetService<T>() where T : class
+    {
+        // Try thread-local first (for tests)
+        var provider = _threadLocalProvider.Value ?? _globalProvider;
+
+        if (provider == null)
+            return null;
+
+        return provider.GetService<T>();
+    }
+
     /// <summary>
     /// Clears the global provider. This is intended for testing purposes only.
     /// </summary>
@@ -59,4 +70,5 @@ public static class ServiceLocator
     public static UsageAnalyzer UsageAnalyzer => GetRequiredService<UsageAnalyzer>();
     public static InheritanceAnalyzer InheritanceAnalyzer => GetRequiredService<InheritanceAnalyzer>();
     public static ResponseFormatter ResponseFormatter => GetRequiredService<ResponseFormatter>();
+    public static McpLoggingService? McpLogger => GetService<McpLoggingService>();
 }

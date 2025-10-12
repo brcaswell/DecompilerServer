@@ -1,0 +1,55 @@
+{
+  "mcpServers": {
+    "decompiler-server-local": {
+      "command": "dotnet",
+      "args": ["run", "--project", ".", "--verbose"],
+      "cwd": ".",
+      "env": {
+        "McpLogging__EnableInspector": "true",
+        "McpLogging__LogToolCalls": "true",
+        "McpLogging__UseCorrelationIds": "true",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "decompiler-server-container": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "--network", "decompilerserver_mcp-network",
+        "-v", "./unity-assemblies:/app/assemblies:ro",
+        "-e", "DECOMPILER_VERBOSE=true",
+        "-e", "McpLogging__EnableInspector=true",
+        "-e", "McpLogging__LogToolCalls=true",
+        "decompiler-server:latest"
+      ],
+      "env": {}
+    },
+    "decompiler-server-compose": {
+      "command": "docker",
+      "args": [
+        "compose", "-f", "compose.inspector.yaml",
+        "exec", "-T", "decompiler-server",
+        "/app/DecompilerServer"
+      ],
+      "env": {}
+    }
+  },
+  "globalShortcuts": {
+    "toggleLogs": "cmd+shift+l",
+    "clearLogs": "cmd+shift+c",
+    "exportLogs": "cmd+shift+e"
+  },
+  "ui": {
+    "theme": "dark",
+    "fontSize": 14,
+    "showTimestamps": true,
+    "showCorrelationIds": true,
+    "maxLogEntries": 1000
+  },
+  "logging": {
+    "level": "info",
+    "includeSystemLogs": false,
+    "highlightErrors": true,
+    "groupByCorrelationId": true
+  }
+}
