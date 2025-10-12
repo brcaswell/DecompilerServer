@@ -15,18 +15,18 @@ public partial class Program
             ShowHelp();
             return;
         }
-        
+
         // Check for verbose logging flag
         var verbose = args.Contains("--verbose") || args.Contains("-v");
-        
+
         // Check for file watcher flag
         var enableFileWatcher = args.Contains("--watch") || args.Contains("--file-watcher") || args.Contains("-w") ||
                                Environment.GetEnvironmentVariable("ENABLE_FILE_WATCHER")?.ToLowerInvariant() == "true";
-        
+
         var builder = Host.CreateApplicationBuilder(args);
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(new StderrLoggerProvider());
-        
+
         // Set log level based on verbose flag
         if (verbose)
         {
@@ -40,7 +40,7 @@ public partial class Program
             builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
             builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
         }
-        
+
         builder.Services.AddHostedService<StartupLogService>();
 
         // Log the startup mode
