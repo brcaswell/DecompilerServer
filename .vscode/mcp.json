@@ -1,0 +1,60 @@
+{
+  "inputs": [
+    {
+      "id": "game-assemblies-path",
+      "type": "promptString",
+      "description": "Enter the path to your game's Managed assemblies folder (e.g., D:/SteamLibrary/steamapps/common/YourGame/YourGame_Data/Managed). Note: You must load an assembly first using LoadAssembly before using other analysis tools.",
+      "default": "d:\\github\\DecompilerServer\\test-assemblies\\net8.0"
+    },
+    {
+      "id": "assembly-filename",
+      "type": "promptString", 
+      "description": "Enter the assembly filename to analyze",
+      "default": "Assembly-CSharp.dll"
+    },
+    {
+      "id": "container-image",
+      "type": "promptString",
+      "description": "Enter the DecompilerServer container image name",
+      "default": "localhost/decompiler-mcp-server:dev"
+    },
+    {
+      "id": "verbose-logging",
+      "type": "promptString",
+      "description": "Enable verbose logging? (true/false)",
+      "default": "false"
+    }
+  ],
+  "servers": {
+    "DecompilerServer": {
+      "env": {
+        "GAME_ASSEMBLIES_PATH": "${input:game-assemblies-path}",
+        "ASSEMBLY_FILENAME": "${input:assembly-filename}",
+        "CONTAINER_IMAGE": "${input:container-image}",
+        "VERBOSE_LOGGING": "${input:verbose-logging}"
+      },
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--network", "decompilerserver_mcp-logging-network",
+        "-v",
+        "${input:game-assemblies-path}:/app/assemblies:ro",
+        "-v",
+        "d:\\github\\DecompilerServer\\logs:/app/logs",
+        "-e",
+        "ASSEMBLY_PATH=/app/assemblies/${input:assembly-filename}",
+        "-e",
+        "DECOMPILER_VERBOSE=${input:verbose-logging}",
+        "-e",
+        "McpLogging__EnableInspector=true",
+        "-e",
+        "McpLogging__LogToolCalls=true",
+        "-e",
+        "McpLogging__UseCorrelationIds=true",
+        "${input:container-image}"
+      ]
+    }
+  }
+}

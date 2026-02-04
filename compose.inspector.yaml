@@ -8,9 +8,6 @@ services:
       - McpLogging__EnableInspector=true
       - McpLogging__LogToolCalls=true
       - McpLogging__UseCorrelationIds=true
-      - Serilog__MinimumLevel__Default=Information
-      - Serilog__WriteTo__0__Args__restrictedToMinimumLevel=Information
-      - Serilog__WriteTo__2__Args__serverUrl=http://seq-server:5341
     volumes:
       - "./unity-assemblies:/app/assemblies:ro"
       - "./logs:/app/logs"
@@ -23,11 +20,12 @@ services:
 
   seq-server:
     image: datalust/seq:latest
+    container_name: decompiler-seq-inspector
     ports:
-      - "5341:80"
+      - "5342:80"
     environment:
       - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_ADMINPASSWORDHASH=
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
     volumes:
       - seq-data:/data
     networks:

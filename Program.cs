@@ -28,13 +28,19 @@ public partial class Program
 
         var builder = Host.CreateApplicationBuilder(args);
         
-        // Configure Serilog from appsettings.json
+        // Enable Serilog self-diagnostics to troubleshoot Seq sink issues
+        Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine($"SERILOG DEBUG: {msg}"));
+        
+        // Configure Serilog from appsettings.json with immediate flushing for short-lived processes
         Log.Logger = new LoggerConfiguration()
             .ReadFrom.Configuration(builder.Configuration)
             .Enrich.FromLogContext()
             .Enrich.WithProperty("Application", "DecompilerServer")
             .CreateLogger();
 
+        // Log startup immediately to verify logging is working
+        Log.Information("DecompilerServer starting up - verbose: {Verbose}, fileWatcher: {FileWatcher}", verbose, enableFileWatcher);
+        
         // Clear default providers and add Serilog
         builder.Logging.ClearProviders();
         builder.Services.AddSerilog(Log.Logger);
@@ -107,11 +113,15 @@ public partial class Program
             var mcpLogger = app.Services.GetService<McpLoggingService>();
             mcpLogger?.LogInspectorEvent("ServerStartup", new { Verbose = verbose, FileWatcher = enableFileWatcher });
             
+            Log.Information("MCP Server initialized and ready to accept requests");
+            
             await app.RunAsync();
         }
         finally
         {
-            Log.CloseAndFlush();
+            Log.Information("MCP Server shutting down");
+            await Task.Delay(1000); // Give time for all logs to send before exit
+            await Log.CloseAndFlushAsync();
         }
     }
 
