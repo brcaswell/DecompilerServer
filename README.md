@@ -47,6 +47,7 @@ A powerful MCP (Model Context Protocol) server for decompiling and analyzing .NE
 DecompilerServer/
 ├── Services/                      # Core service implementations
 │   ├── FileWatcherService.cs     # Real-time assembly change monitoring
+│   ├── McpLoggingService.cs      # MCP-specific logging with correlation IDs
 │   └── ...                       # Other core services
 ├── Tools/                         # MCP tool implementations (39 tools)
 ├── Tests/                         # xUnit test suite with file watcher tests
@@ -56,16 +57,22 @@ DecompilerServer/
 ├── scripts/                       # Container orchestration scripts
 │   ├── watch-container.ps1       # Windows PowerShell file watcher
 │   └── watch-container.sh        # Linux/macOS Bash file watcher
+├── logs/                          # Application logs (file sink output)
 ├── test-filewatcher.ps1          # Comprehensive testing suite
+├── test-mcp-logging.ps1          # MCP logging integration test
+├── test-seq-network.sh           # Seq network connectivity test
 ├── Properties/                    # Application properties
 ├── Program.cs                     # Application entry point
 ├── ServiceLocator.cs              # Service locator for MCP tools
 ├── StartupLogService.cs           # Startup logging service
 ├── StderrLogger.cs                # Custom stderr logger for MCP
+├── appsettings.json               # Serilog and MCP logging configuration
+├── appsettings.Development.json   # Development-specific settings
 ├── Dockerfile                     # Container configuration
 ├── .dockerignore                  # Docker build exclusions
 ├── compose.yaml                   # Docker Compose configuration
 ├── compose.debug.yaml             # Docker Compose debug configuration
+├── compose.logging.yaml           # Seq logging server configuration
 ├── DecompilerServer.sln           # Solution file
 └── *.md                           # Documentation files
 ```
@@ -286,6 +293,173 @@ args = []
   }
 }
 ```
+
+## 📊 MCP Logging & Observability
+
+DecompilerServer includes comprehensive structured logging with Seq integration for monitoring and debugging MCP server operations.
+
+### 🎯 Logging Features
+
+- **Structured Logging**: All operations logged with rich context and metadata
+- **Correlation IDs**: Track related operations across tool calls
+- **Performance Metrics**: Automatic timing and performance tracking
+- **Tool Call Logging**: Complete audit trail of all MCP tool invocations
+- **Error Tracking**: Detailed error information with stack traces
+- **Real-time Monitoring**: Live log streaming to Seq UI
+
+### 🚀 Quick Start with Seq
+
+1. **Start Seq server**:
+   ```bash
+   docker-compose -f compose.logging.yaml up -d
+   ```
+
+2. **Access Seq UI**: 
+   Open http://localhost:5342 in your browser
+
+3. **Start MCP server** with logging network:
+   ```bash
+   docker run -i --rm \
+     --network decompilerserver_mcp-logging-network \
+     -v "/path/to/assemblies:/app/assemblies:ro" \
+     -e "ASSEMBLY_PATH=/app/assemblies/Assembly-CSharp.dll" \
+     localhost/decompiler-mcp-server:dev
+   ```
+
+4. **Use MCP tools** - all operations will be logged to Seq automatically!
+
+### 📋 Logging Configuration
+
+**Serilog Configuration** (`appsettings.json`):
+- **Console Sink**: Writes to stderr (MCP protocol uses stdout)
+- **File Sink**: Rolling daily logs in `logs/` directory
+- **Seq Sink**: Real-time structured logging with aggressive batching
+
+**Key Settings**:
+```json
+{
+  "Serilog": {
+    "WriteTo": [
+      {
+        "Name": "Seq",
+        "Args": {
+          "serverUrl": "http://decompiler-seq:80",
+          "restrictedToMinimumLevel": "Information",
+          "batchPostingLimit": 1,
+          "period": "00:00:00.5"
+        }
+      }
+    ]
+  },
+  "McpLogging": {
+    "LogToolCalls": true,
+    "LogAssemblyOperations": true,
+    "LogSearchOperations": true,
+    "LogPerformanceMetrics": true,
+    "UseCorrelationIds": true,
+    "SlowOperationThresholdMs": 1000
+  }
+}
+```
+
+### 🔍 What Gets Logged
+
+**Tool Calls**:
+- Tool name and parameters
+- Execution time and performance
+- Success/failure status
+- Result summaries
+
+**Assembly Operations**:
+- Assembly loading with type/method counts
+- Cache operations and hits/misses
+- Decompilation requests
+
+**Search Operations**:
+- Search queries and filters
+- Result counts and pagination
+- Search performance metrics
+
+**Errors & Warnings**:
+- Exception details and stack traces
+- Validation errors
+- File not found errors
+
+### 🌐 Docker Network Setup
+
+The MCP server and Seq communicate via a Docker network:
+
+```yaml
+# compose.logging.yaml
+services:
+  seq:
+    image: datalust/seq:latest
+    container_name: decompiler-seq
+    ports:
+      - "5342:80"
+    networks:
+      - mcp-logging-network
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+    volumes:
+      - seq-data:/data
+    restart: unless-stopped
+
+networks:
+  mcp-logging-network:
+    name: decompilerserver_mcp-logging-network
+```
+
+### 📈 Viewing Logs in Seq
+
+**Filter by Tool**: 
+```
+Application = "DecompilerServer" AND ToolName = "mcp_decompilerser_load_assembly"
+```
+
+**Find Slow Operations**:
+```
+Application = "DecompilerServer" AND ElapsedMs > 1000
+```
+
+**Track Correlation**:
+```
+CorrelationId = "abc123-def456"
+```
+
+**View Errors**:
+```
+@Level = "Error" OR @Level = "Warning"
+```
+
+### 🐛 Troubleshooting Logging
+
+**No logs appearing in Seq?**
+- Check Seq container is running: `docker ps`
+- Verify network exists: `docker network ls | grep mcp-logging`
+- Check MCP server is on same network
+- View Seq logs: `docker logs decompiler-seq`
+
+**Console logs interfering with MCP protocol?**
+- Ensure Console sink uses `"standardErrorFromLevel": "Verbose"`
+- MCP protocol requires stdout to be clean JSON-RPC only
+
+**Logs not flushing before container exit?**
+- 1-second delay in finally block ensures flush completion
+- Aggressive batching (1 event, 0.5s period) forces immediate sends
+
+### 📝 Test Logging Integration
+
+Use the included test script:
+```powershell
+.\test-mcp-logging.ps1
+```
+
+This will:
+1. Verify Seq server is running
+2. Run an MCP test request
+3. Direct you to check logs in Seq UI
 
 ### 🔄 Environment Variables & Server Lifecycle
 

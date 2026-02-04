@@ -1,0 +1,21 @@
+services:
+  seq-server:
+    image: datalust/seq:latest
+    container_name: decompiler-seq
+    ports:
+      - "5342:80"
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+    volumes:
+      - seq-data:/data
+    networks:
+      - mcp-logging-network
+    restart: unless-stopped
+
+networks:
+  mcp-logging-network:
+    driver: bridge
+
+volumes:
+  seq-data:

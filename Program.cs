@@ -1,7 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using DecompilerServer.Services;
+using Serilog;
+using Serilog.Events;
 
 namespace DecompilerServer;
 
@@ -24,21 +27,41 @@ public partial class Program
                                Environment.GetEnvironmentVariable("ENABLE_FILE_WATCHER")?.ToLowerInvariant() == "true";
 
         var builder = Host.CreateApplicationBuilder(args);
+        
+        // Enable Serilog self-diagnostics to troubleshoot Seq sink issues
+        Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine($"SERILOG DEBUG: {msg}"));
+        
+        // Configure Serilog from appsettings.json with immediate flushing for short-lived processes
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(builder.Configuration)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("Application", "DecompilerServer")
+            .CreateLogger();
+
+        // Log startup immediately to verify logging is working
+        Log.Information("DecompilerServer starting up - verbose: {Verbose}, fileWatcher: {FileWatcher}", verbose, enableFileWatcher);
+        
+        // Clear default providers and add Serilog
         builder.Logging.ClearProviders();
+        builder.Services.AddSerilog(Log.Logger);
+        
+        // Keep stderr logging for compatibility with existing tools
         builder.Logging.AddProvider(new StderrLoggerProvider());
 
-        // Set log level based on verbose flag
+        // Override log levels based on verbose flag
         if (verbose)
         {
-            builder.Logging.SetMinimumLevel(LogLevel.Debug);
-            // In verbose mode, show all MCP protocol logs
-        }
-        else
-        {
-            builder.Logging.SetMinimumLevel(LogLevel.Information);
-            // In normal mode, suppress noisy MCP protocol logs
-            builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
-            builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
+            // In verbose mode, increase log levels for debugging
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(builder.Configuration)
+                .MinimumLevel.Override("DecompilerServer", LogEventLevel.Debug)
+                .MinimumLevel.Override("DecompilerServer.Services", LogEventLevel.Debug)
+                .Enrich.FromLogContext()
+                .Enrich.WithProperty("Application", "DecompilerServer")
+                .Enrich.WithProperty("VerboseMode", true)
+                .CreateLogger();
+            
+            builder.Services.AddSerilog(Log.Logger);
         }
 
         builder.Services.AddHostedService<StartupLogService>();
@@ -49,6 +72,9 @@ public partial class Program
             Console.Error.WriteLine($"STDERR [{DateTime.Now:HH:mm:ss}] DecompilerServer [Information] Starting in verbose mode - MCP protocol details will be logged");
         }
 
+        // Configure MCP logging options
+        builder.Services.Configure<McpLoggingOptions>(builder.Configuration.GetSection(McpLoggingOptions.SectionName));
+        
         // Register DecompilerServer services as singletons for state persistence
         builder.Services.AddSingleton<AssemblyContextManager>();
         builder.Services.AddSingleton<MemberResolver>();
@@ -56,6 +82,11 @@ public partial class Program
         builder.Services.AddSingleton<UsageAnalyzer>();
         builder.Services.AddSingleton<InheritanceAnalyzer>();
         builder.Services.AddSingleton<ResponseFormatter>();
+        
+        // Register MCP logging service
+        builder.Services.AddSingleton(sp => sp.GetRequiredService<IConfiguration>()
+            .GetSection(McpLoggingOptions.SectionName).Get<McpLoggingOptions>() ?? new McpLoggingOptions());
+        builder.Services.AddSingleton<McpLoggingService>();
 
         // Add file watching service (only if not in container mode)
         if (enableFileWatcher && !IsRunningInContainer())
@@ -77,7 +108,21 @@ public partial class Program
         // Initialize service locator
         ServiceLocator.SetServiceProvider(app.Services);
 
-        await app.RunAsync();
+        try
+        {
+            var mcpLogger = app.Services.GetService<McpLoggingService>();
+            mcpLogger?.LogInspectorEvent("ServerStartup", new { Verbose = verbose, FileWatcher = enableFileWatcher });
+            
+            Log.Information("MCP Server initialized and ready to accept requests");
+            
+            await app.RunAsync();
+        }
+        finally
+        {
+            Log.Information("MCP Server shutting down");
+            await Task.Delay(1000); // Give time for all logs to send before exit
+            await Log.CloseAndFlushAsync();
+        }
     }
 
     private static bool IsRunningInContainer()

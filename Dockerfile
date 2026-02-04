@@ -20,7 +20,7 @@ RUN dotnet build "DecompilerServer.csproj" -c $configuration -o /app/build --no-
 
 FROM build AS publish
 ARG configuration=Release
-# Publish with optimizations: trimming, single file, no debug symbols
+# Publish without trimming to preserve MCP tool attributes
 RUN dotnet publish "DecompilerServer.csproj" \
     -c $configuration \
     -o /app/publish \
@@ -28,8 +28,6 @@ RUN dotnet publish "DecompilerServer.csproj" \
     -r linux-musl-x64 \
     --self-contained false \
     /p:UseAppHost=false \
-    /p:PublishTrimmed=true \
-    /p:TrimMode=partial \
     /p:PublishSingleFile=false \
     /p:DebugType=none \
     /p:DebugSymbols=false
@@ -43,5 +41,5 @@ COPY --from=publish --chown=app:app /app/publish .
 # Environment variable to control verbose logging
 ENV DECOMPILER_VERBOSE=false
 
-# Use exec form for better signal handling
-ENTRYPOINT ["sh", "-c", "if [ \"$DECOMPILER_VERBOSE\" = \"true\" ]; then dotnet DecompilerServer.dll --verbose; else dotnet DecompilerServer.dll; fi"]
+# Use exec form for better signal handling and stdin piping
+ENTRYPOINT ["dotnet", "DecompilerServer.dll"]

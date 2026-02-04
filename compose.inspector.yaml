@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  decompiler-server:
+    build: .
+    environment:
+      - DECOMPILER_VERBOSE=true
+      - McpLogging__EnableInspector=true
+      - McpLogging__LogToolCalls=true
+      - McpLogging__UseCorrelationIds=true
+    volumes:
+      - "./unity-assemblies:/app/assemblies:ro"
+      - "./logs:/app/logs"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - seq-server
+    networks:
+      - mcp-network
+
+  seq-server:
+    image: datalust/seq:latest
+    container_name: decompiler-seq-inspector
+    ports:
+      - "5342:80"
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+    volumes:
+      - seq-data:/data
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  seq-data:
+    driver: local
